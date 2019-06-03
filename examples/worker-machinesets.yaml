@@ -1,5 +1,5 @@
 ---
-apiVersion: machine.openshift.io/v1beta1
+apiVersion: cluster.k8s.io/v1alpha1
 kind: MachineSet
 metadata:
   name: kubemark-actuator-testing-machineset-red
@@ -29,7 +29,7 @@ spec:
         kubelet: 1.10.1
         controlPlane: 1.10.1
 ---
-apiVersion: machine.openshift.io/v1beta1
+apiVersion: cluster.k8s.io/v1alpha1
 kind: MachineSet
 metadata:
   name: kubemark-actuator-testing-machineset-green
@@ -59,7 +59,7 @@ spec:
         kubelet: 1.10.1
         controlPlane: 1.10.1
 ---
-apiVersion: machine.openshift.io/v1beta1
+apiVersion: cluster.k8s.io/v1alpha1
 kind: MachineSet
 metadata:
   name: kubemark-actuator-testing-machineset-blue

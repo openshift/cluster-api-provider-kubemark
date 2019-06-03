@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: pdb-workload
+spec:
+  replicas: 10
+  selector:
+    app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: work
+        image: busybox
+        command: ["sleep",  "10h"]
+        resources:
+          requests:
+            memory: 50Mi
+            cpu: 50m
+      nodeSelector:
+        node-role.kubernetes.io/compute: ""
+      tolerations:
+      - key: kubemark
+        operator: Exists

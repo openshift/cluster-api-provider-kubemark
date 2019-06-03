@@ -19,7 +19,7 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - machine.openshift.io
+  - cluster.k8s.io
   resources:
   - machines
   - machines/status

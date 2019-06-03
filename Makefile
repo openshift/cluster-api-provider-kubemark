@@ -71,7 +71,7 @@ bin:
 .PHONY: build
 build: ## build binaries
 	$(DOCKER_CMD) go build $(GOGCFLAGS) -o bin/manager -ldflags '-extldflags "-static"' github.com/openshift/cluster-api-provider-kubemark/cmd/manager
-	$(DOCKER_CMD) go build $(GOGCFLAGS) -o bin/machine-controller-manager -ldflags '-extldflags "-static"' github.com/openshift/cluster-api-provider-kubemark/vendor/github.com/openshift/cluster-api/cmd/manager
+	$(DOCKER_CMD) go build $(GOGCFLAGS) -o bin/machine-controller-manager -ldflags '-extldflags "-static"' github.com/openshift/cluster-api-provider-kubemark/vendor/sigs.k8s.io/cluster-api/cmd/manager
 	$(DOCKER_CMD) go test $(GOGCFLAGS) -c -o bin/test-e2e github.com/openshift/cluster-api-provider-kubemark/vendor/github.com/openshift/cluster-api-actuator-pkg/pkg/e2e
 
 

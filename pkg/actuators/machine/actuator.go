@@ -33,11 +33,10 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	providerconfigv1 "github.com/openshift/cluster-api-provider-kubemark/pkg/apis/kubemarkproviderconfig/v1beta1"
-	v1alpha1 "github.com/openshift/cluster-api/pkg/apis/cluster/v1alpha1"
-	machinev1 "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
-	clustererror "github.com/openshift/cluster-api/pkg/controller/error"
-	apierrors "github.com/openshift/cluster-api/pkg/errors"
 	uuid "github.com/satori/go.uuid"
+	v1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clustererror "sigs.k8s.io/cluster-api/pkg/controller/error"
+	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -95,7 +94,7 @@ const (
 
 // Set corresponding event based on error. It also returns the original error
 // for convenience, so callers can do "return handleMachineError(...)".
-func (a *Actuator) handleMachineError(machine *machinev1.Machine, err *apierrors.MachineError, eventAction string) error {
+func (a *Actuator) handleMachineError(machine *v1alpha1.Machine, err *apierrors.MachineError, eventAction string) error {
 	if eventAction != noEventAction {
 		a.eventRecorder.Eventf(machine, corev1.EventTypeWarning, "Failed"+eventAction, "%v", err.Reason)
 	}
@@ -105,7 +104,7 @@ func (a *Actuator) handleMachineError(machine *machinev1.Machine, err *apierrors
 }
 
 // Create runs a new kubemark instance
-func (a *Actuator) Create(context context.Context, cluster *v1alpha1.Cluster, machine *machinev1.Machine) error {
+func (a *Actuator) Create(context context.Context, cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) error {
 	glog.Info("creating machine")
 	instance, err := a.CreateMachine(cluster, machine)
 	if err != nil {
@@ -124,7 +123,7 @@ func (a *Actuator) Create(context context.Context, cluster *v1alpha1.Cluster, ma
 	return a.updateStatus(machine, instance)
 }
 
-func (a *Actuator) updateMachineStatus(machine *machinev1.Machine, kubemarkStatus *providerconfigv1.KubemarkMachineProviderStatus, networkAddresses []corev1.NodeAddress) error {
+func (a *Actuator) updateMachineStatus(machine *v1alpha1.Machine, kubemarkStatus *providerconfigv1.KubemarkMachineProviderStatus, networkAddresses []corev1.NodeAddress) error {
 	kubemarkStatusRaw, err := a.codec.EncodeProviderStatus(kubemarkStatus)
 	if err != nil {
 		glog.Errorf("error encoding Kubemark provider status: %v", err)
@@ -161,7 +160,7 @@ func (a *Actuator) updateMachineStatus(machine *machinev1.Machine, kubemarkStatu
 }
 
 // updateMachineProviderConditions updates conditions set within machine provider status.
-func (a *Actuator) updateMachineProviderConditions(machine *machinev1.Machine, conditionType providerconfigv1.KubemarkMachineProviderConditionType, reason string, msg string) error {
+func (a *Actuator) updateMachineProviderConditions(machine *v1alpha1.Machine, conditionType providerconfigv1.KubemarkMachineProviderConditionType, reason string, msg string) error {
 
 	glog.Info("updating machine conditions")
 
@@ -180,7 +179,7 @@ func (a *Actuator) updateMachineProviderConditions(machine *machinev1.Machine, c
 	return nil
 }
 
-func (a *Actuator) staticMachinePod(machine *machinev1.Machine) (*corev1.Pod, error) {
+func (a *Actuator) staticMachinePod(machine *v1alpha1.Machine) (*corev1.Pod, error) {
 	kubeClient, err := kubernetes.NewForConfig(a.config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build kube client: %v", err)
@@ -216,7 +215,7 @@ func (a *Actuator) staticMachinePod(machine *machinev1.Machine) (*corev1.Pod, er
 }
 
 // CreateMachine starts a new AWS instance as described by the cluster and machine resources
-func (a *Actuator) CreateMachine(cluster *v1alpha1.Cluster, machine *machinev1.Machine) (*corev1.Pod, error) {
+func (a *Actuator) CreateMachine(cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) (*corev1.Pod, error) {
 	kubeClient, err := kubernetes.NewForConfig(a.config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build kube client: %v", err)
@@ -358,7 +357,7 @@ func (a *Actuator) CreateMachine(cluster *v1alpha1.Cluster, machine *machinev1.M
 }
 
 // Delete deletes a machine and updates its finalizer
-func (a *Actuator) Delete(context context.Context, cluster *v1alpha1.Cluster, machine *machinev1.Machine) error {
+func (a *Actuator) Delete(context context.Context, cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) error {
 	glog.Info("deleting machine")
 	if err := a.DeleteMachine(cluster, machine); err != nil {
 		glog.Errorf("error deleting machine: %v", err)
@@ -378,7 +377,7 @@ func (gl *glogLogger) Logf(format string, v ...interface{}) {
 }
 
 // DeleteMachine deletes an AWS instance
-func (a *Actuator) DeleteMachine(cluster *v1alpha1.Cluster, machine *machinev1.Machine) error {
+func (a *Actuator) DeleteMachine(cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) error {
 	if _, isStaticMachine := machine.Annotations[StaticMachineAnnotation]; isStaticMachine {
 		glog.Infof("Deleting static machines %q", machine.Name)
 		a.eventRecorder.Eventf(machine, corev1.EventTypeNormal, "Deleted", "Deleted machine %v", machine.Name)
@@ -419,7 +418,7 @@ func (a *Actuator) DeleteMachine(cluster *v1alpha1.Cluster, machine *machinev1.M
 // Update attempts to sync machine state with an existing instance. Today this just updates status
 // for details that may have changed. (IPs and hostnames) We do not currently support making any
 // changes to actual machines in AWS. Instead these will be replaced via MachineDeployments.
-func (a *Actuator) Update(context context.Context, cluster *v1alpha1.Cluster, machine *machinev1.Machine) error {
+func (a *Actuator) Update(context context.Context, cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) error {
 	glog.Info("updating machine")
 
 	if _, isStaticMachine := machine.Annotations[StaticMachineAnnotation]; isStaticMachine {
@@ -471,7 +470,7 @@ func (a *Actuator) Update(context context.Context, cluster *v1alpha1.Cluster, ma
 
 // Exists determines if the given machine currently exists. For AWS we query for instances in
 // running state, with a matching name tag, to determine a match.
-func (a *Actuator) Exists(context context.Context, cluster *v1alpha1.Cluster, machine *machinev1.Machine) (bool, error) {
+func (a *Actuator) Exists(context context.Context, cluster *v1alpha1.Cluster, machine *v1alpha1.Machine) (bool, error) {
 	glog.Info("checking if machine exists")
 
 	if _, isStaticMachine := machine.Annotations[StaticMachineAnnotation]; isStaticMachine {
@@ -493,7 +492,7 @@ func (a *Actuator) Exists(context context.Context, cluster *v1alpha1.Cluster, ma
 	return true, nil
 }
 
-func (a *Actuator) getMachinePod(machine *machinev1.Machine) (*corev1.Pod, error) {
+func (a *Actuator) getMachinePod(machine *v1alpha1.Machine) (*corev1.Pod, error) {
 	kubeClient, err := kubernetes.NewForConfig(a.config)
 	if err != nil {
 		return nil, fmt.Errorf("unable to build kube client: %v", err)
@@ -521,7 +520,7 @@ func (a *Actuator) getMachinePod(machine *machinev1.Machine) (*corev1.Pod, error
 	return &pods[0], nil
 }
 
-func (a *Actuator) updateProviderID(machine *machinev1.Machine, instance *corev1.Pod) (*machinev1.Machine, error) {
+func (a *Actuator) updateProviderID(machine *v1alpha1.Machine, instance *corev1.Pod) (*v1alpha1.Machine, error) {
 	machineCopy := machine.DeepCopy()
 
 	// update ProviderID if changed
@@ -540,7 +539,7 @@ func (a *Actuator) updateProviderID(machine *machinev1.Machine, instance *corev1
 }
 
 // updateStatus calculates the new machine status, checks if anything has changed, and updates if so.
-func (a *Actuator) updateStatus(machine *machinev1.Machine, instance *corev1.Pod) error {
+func (a *Actuator) updateStatus(machine *v1alpha1.Machine, instance *corev1.Pod) error {
 	glog.Info("updating status")
 
 	// Starting with a fresh status as we assume full control of it here.
@@ -584,7 +583,7 @@ func (a *Actuator) updateStatus(machine *machinev1.Machine, instance *corev1.Pod
 	return nil
 }
 
-func getClusterID(machine *machinev1.Machine) (string, bool) {
+func getClusterID(machine *v1alpha1.Machine) (string, bool) {
 	clusterID, ok := machine.Labels[providerconfigv1.ClusterIDLabel]
 	return clusterID, ok
 }

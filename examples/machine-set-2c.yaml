@@ -1,5 +1,5 @@
 ---
-apiVersion: machine.openshift.io/v1beta1
+apiVersion: cluster.k8s.io/v1alpha1
 kind: MachineSet
 metadata:
   name: kubemark-scale-group-2c

@@ -16,16 +16,15 @@ import (
 
 	machineactuator "github.com/openshift/cluster-api-provider-kubemark/pkg/actuators/machine"
 	"github.com/openshift/cluster-api-provider-kubemark/pkg/apis/kubemarkproviderconfig/v1beta1"
-	v1alpha1 "github.com/openshift/cluster-api/pkg/apis/cluster/v1alpha1"
-	clusterv1 "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
+	v1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 type manifestParams struct {
 	ClusterID string
 }
 
-func readMachineManifest(manifestParams *manifestParams, manifestLoc string) (*clusterv1.Machine, error) {
-	machine := clusterv1.Machine{}
+func readMachineManifest(manifestParams *manifestParams, manifestLoc string) (*v1alpha1.Machine, error) {
+	machine := v1alpha1.Machine{}
 	manifestBytes, err := ioutil.ReadFile(manifestLoc)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read %v: %v", manifestLoc, err)
@@ -48,7 +47,7 @@ func readMachineManifest(manifestParams *manifestParams, manifestLoc string) (*c
 	return &machine, nil
 }
 
-func readClusterResources(manifestParams *manifestParams, clusterLoc, machineLoc string) (*v1alpha1.Cluster, *clusterv1.Machine, error) {
+func readClusterResources(manifestParams *manifestParams, clusterLoc, machineLoc string) (*v1alpha1.Cluster, *v1alpha1.Machine, error) {
 	machine, err := readMachineManifest(manifestParams, machineLoc)
 	if err != nil {
 		return nil, nil, err
@@ -68,7 +67,7 @@ func readClusterResources(manifestParams *manifestParams, clusterLoc, machineLoc
 }
 
 // CreateActuator creates actuator with fake clientsets
-func createActuator(machine *clusterv1.Machine, kubeconfig string) (*machineactuator.Actuator, error) {
+func createActuator(machine *v1alpha1.Machine, kubeconfig string) (*machineactuator.Actuator, error) {
 	objList := []runtime.Object{machine}
 	fakeClient := fake.NewFakeClient(objList...)
 

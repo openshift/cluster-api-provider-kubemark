@@ -23,27 +23,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	providerconfigv1 "github.com/openshift/cluster-api-provider-kubemark/pkg/apis/kubemarkproviderconfig/v1beta1"
-	machinev1 "github.com/openshift/cluster-api/pkg/apis/machine/v1beta1"
+	v1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // providerConfigFromMachine gets the machine provider config MachineSetSpec from the
 // specified cluster-api MachineSpec.
-func providerConfigFromMachine(client client.Client, machine *machinev1.Machine, codec *providerconfigv1.KubemarkProviderConfigCodec) (*providerconfigv1.KubemarkMachineProviderConfig, error) {
+func providerConfigFromMachine(client client.Client, machine *v1alpha1.Machine, codec *providerconfigv1.KubemarkProviderConfigCodec) (*providerconfigv1.KubemarkMachineProviderConfig, error) {
 	providerSpec := machine.Spec.ProviderSpec
 	if providerSpec.Value == nil {
 		return nil, fmt.Errorf("unable to find machine provider config: neither Spec.ProviderSpec.Value nor Spec.ProviderSpec.ValueFrom set")
 	}
 
 	var config providerconfigv1.KubemarkMachineProviderConfig
-	if err := codec.DecodeProviderSpec(&machinev1.ProviderSpec{Value: providerSpec.Value}, &config); err != nil {
+	if err := codec.DecodeProviderSpec(&v1alpha1.ProviderSpec{Value: providerSpec.Value}, &config); err != nil {
 		return nil, err
 	}
 	return &config, nil
 }
 
 // isMaster returns true if the machine is part of a cluster's control plane
-func isMaster(machine *machinev1.Machine) bool {
+func isMaster(machine *v1alpha1.Machine) bool {
 	if machineType, exists := machine.ObjectMeta.Labels[providerconfigv1.MachineTypeLabel]; exists && machineType == "master" {
 		return true
 	}
