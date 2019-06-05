@@ -61,17 +61,3 @@ spec:
         args:
           - --logtostderr=true
           - --v=3
-      - name: nodelink-controller
-        image: docker.io/openshift/origin-machine-api-operator:v4.0.0
-        command:
-          - /nodelink-controller
-        args:
-          - --logtostderr=true
-          - --v=3
-        resources:
-          requests:
-            cpu: 100m
-            memory: 20Mi
-          limits:
-            cpu: 100m
-            memory: 30Mi

@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 	machineactuator "github.com/openshift/cluster-api-provider-kubemark/pkg/actuators/machine"
 	"github.com/openshift/cluster-api-provider-kubemark/pkg/apis/kubemarkproviderconfig/v1beta1"
+	"github.com/openshift/cluster-api-provider-kubemark/pkg/controller/nodelink"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	clusterapis "sigs.k8s.io/cluster-api/pkg/apis"
@@ -71,6 +72,10 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := clusterapis.AddToScheme(mgr.GetScheme()); err != nil {
+		glog.Fatal(err)
+	}
+
+	if err := nodelink.Add(mgr, opts); err != nil {
 		glog.Fatal(err)
 	}
 
