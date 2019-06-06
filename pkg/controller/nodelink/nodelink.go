@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/klog/glog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,8 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	v1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
-	mapiinformersfactory "sigs.k8s.io/cluster-api/pkg/client/informers_generated/externalversions"
 	nodecontroller "sigs.k8s.io/cluster-api/pkg/controller/node"
 )
 
@@ -31,8 +28,8 @@ const (
 
 // Add creates a new Node Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, opts manager.Options) error {
-	r, err := newReconciler(mgr, opts)
+func Add(mgr manager.Manager) error {
+	r, err := newReconciler(mgr)
 	if err != nil {
 		return err
 	}
@@ -40,42 +37,17 @@ func Add(mgr manager.Manager, opts manager.Options) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, opts manager.Options) (reconcile.Reconciler, error) {
-	client, err := clientset.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		return nil, fmt.Errorf("Could not create client for talking to the apiserver: %v", err)
-	}
-
-	var resyncPeriod time.Duration
-	if opts.SyncPeriod != nil {
-		resyncPeriod = *opts.SyncPeriod
-	} else {
-		resyncPeriod = time.Minute
-	}
-
-	var mapiInformers mapiinformersfactory.SharedInformerFactory
-	if opts.Namespace != "" {
-		klog.Infof("Watching machine-api objects only in namespace %q for reconciliation.", opts.Namespace)
-		mapiInformers = mapiinformersfactory.NewSharedInformerFactoryWithOptions(client, resyncPeriod, mapiinformersfactory.WithNamespace(opts.Namespace))
-	} else {
-		mapiInformers = mapiinformersfactory.NewSharedInformerFactory(client, resyncPeriod)
-	}
-
-	if err := mapiInformers.Cluster().V1alpha1().Machines().Informer().GetIndexer().AddIndexers(
-		cache.Indexers{machineInternalIPIndex: indexMachineByInternalIP},
-	); err != nil {
+func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
+	if err := mgr.GetCache().IndexField(&v1alpha1.Machine{}, machineInternalIPIndex, indexMachineByInternalIP); err != nil {
 		return nil, fmt.Errorf("unable to add indexer to machine informer: %v", err)
 	}
 
-	mapiInformers.Start(make(<-chan struct{}, 0))
-
 	return &ReconcileNode{
-		Client:          mgr.GetClient(),
-		machineInformer: mapiInformers.Cluster().V1alpha1().Machines().Informer(),
+		Client: mgr.GetClient(),
 	}, nil
 }
 
-func indexMachineByInternalIP(obj interface{}) ([]string, error) {
+func indexMachineByInternalIP(obj runtime.Object) []string {
 	if machine, ok := obj.(*v1alpha1.Machine); ok {
 		addresses := []string{}
 		for _, a := range machine.Status.Addresses {
@@ -83,9 +55,9 @@ func indexMachineByInternalIP(obj interface{}) ([]string, error) {
 				addresses = append(addresses, a.Address)
 			}
 		}
-		return addresses, nil
+		return addresses
 	}
-	return []string{}, nil
+	return []string{}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -110,7 +82,6 @@ var _ reconcile.Reconciler = &ReconcileNode{}
 // ReconcileNode reconciles a Node object
 type ReconcileNode struct {
 	client.Client
-	machineInformer cache.SharedIndexInformer
 }
 
 func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -220,22 +191,18 @@ func addTaintsToNode(node *corev1.Node, machine *v1alpha1.Machine) {
 
 func (r *ReconcileNode) machineByInternalIP(nodeInternalIP string) (*v1alpha1.Machine, error) {
 	klog.V(4).Infof("Searching machine cache for IP %q match", nodeInternalIP)
-	objs, err := r.machineInformer.GetIndexer().ByIndex(machineInternalIPIndex, nodeInternalIP)
-	if err != nil {
+
+	machineList := &v1alpha1.MachineList{}
+	if err := r.List(context.TODO(), machineList, client.MatchingField(machineInternalIPIndex, nodeInternalIP)); err != nil {
 		return nil, err
 	}
 
-	switch n := len(objs); {
+	switch n := len(machineList.Items); {
 	case n == 0:
 		return nil, nil
 	case n > 1:
 		return nil, fmt.Errorf("internal error; expected 1 machine, got %v", n)
 	}
 
-	machine, ok := objs[0].(*v1alpha1.Machine)
-	if !ok {
-		return nil, fmt.Errorf("internal error; unexpected type %T", machine)
-	}
-
-	return machine, nil
+	return &machineList.Items[0], nil
 }
