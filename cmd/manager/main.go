@@ -75,7 +75,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	if err := nodelink.Add(mgr, opts); err != nil {
+	if err := nodelink.Add(mgr); err != nil {
 		glog.Fatal(err)
 	}
 
