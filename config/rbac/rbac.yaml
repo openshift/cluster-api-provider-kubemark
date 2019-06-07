@@ -35,6 +35,7 @@ rules:
   - update
   - patch
   - delete
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -126,3 +127,26 @@ rules:
   - create
   - watch
   - list
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-api-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-api-manager-role
+subjects:
+- kind: ServiceAccount
+  name: cluster-api
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-addon: cluster-autoscaler.addons.k8s.io
+    k8s-app: cluster-autoscaler
+  name: cluster-api
+  namespace: kube-system

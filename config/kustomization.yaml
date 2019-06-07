@@ -22,8 +22,9 @@ resources:
 - crds/machineset.k8s.io.crd.yaml
 - crds/machinedeployment.k8s.io.crd.yaml
 - crds/machineclass.k8s.io.crd.yaml
-- rbac/rbac_role.yaml
-- rbac/rbac_role_binding.yaml
+- rbac/rbac.yaml
+- rbac/ca_rbac.yaml
 - rbac/kubemark_rbac.yaml
 - controllers/kubemark.yaml
 - controllers/deployment.yaml
+- controllers/ca-deployment.yaml
